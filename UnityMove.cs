@@ -4,16 +4,16 @@ using System.Collections;
 public class UnityMove : MonoBehaviour {
 
     public float speed = 5.0f;
-    public float turnSmoothing = 15f;   // A smoothing value for turning the player.
-    public float speedDampTime = 0.1f;  // The damping for the speed parameter
+    public float turnSmoothing = 15f;   
+    public float speedDampTime = 0.1f;  
     public float jumpPower = 10.0f;
     public float useCurvesHeight = 0.5f;
 
-    public float airHeight = 0.0f; // Height in air, is 0 when on ground
+    public float airHeight = 0.0f; 
 
     public float distanceFromGround = 0.5f;
 
-    public float fallDamageRate = 10.0f; // A value to determine how much damage is taken from falling
+    public float fallDamageRate = 10.0f; 
 
     private float orgColHeight;
     private Vector3 orgVectColCenter;
@@ -31,7 +31,7 @@ public class UnityMove : MonoBehaviour {
 
     private CapsuleCollider col;
 
-    private Animator anim;              // Reference to the animator component.
+    private Animator anim;              
     private AnimatorStateInfo currentBaseState;
     private Rigidbody rgdbody;
 
@@ -47,7 +47,6 @@ public class UnityMove : MonoBehaviour {
     static int jumpState = Animator.StringToHash("Base Layer.Jump");
     static int restState = Animator.StringToHash("Base Layer.Rest");
 
-    // Use this for initialization
     void Start () {
         anim = GetComponent<Animator>();
         col = GetComponent<CapsuleCollider>();
@@ -62,23 +61,20 @@ public class UnityMove : MonoBehaviour {
         menu = gameMaster.GetComponent<UnityMenu>();
     }
 	
-	// Update is called once per frame
 	void FixedUpdate () {
-        // We only wanna do stuff here if the player is in fact still alive
-
+	// Get Player health
         float health = stats.GetHealth();
-
+	// Get if the Player has paused the game
         isPaused = menu.pauseStatus();
-
+	// Get if the Player has won or lost the game
         bool hasWon = stats.GameStatus();
-
+	// While the player is above 0 health, has not paused and has not won/lost the game
         if (health > 0 && isPaused == false && hasWon == false)
         {
-            // First thing we do is check if player is on the ground
+            // Check if player is on the ground
             CheckGroundStatus();
-
-            // Right let's check for if we need to calculate fall damage
-            // First let's check the current height with the last stored height
+		
+            // Check if the player is currently falling by comparing current height to the one last stored
             if (transform.position.y < currentHeight)
             {
                 // We only want to check for fall damage if there has been a significant time spent in the air
@@ -94,37 +90,39 @@ public class UnityMove : MonoBehaviour {
                 timeInAir = 0.0f;
                 currentHeight = transform.position.y;
             }
-            // If we have fall damage then calculate it
-            // We can do this here since fall damage is only added once we've checked for the right conditions
+            
+		// If we have fall damage then calculate it
             if (fallDamage > 0)
                 CheckFallDamage();
-
+		// Finally we add the speed to the player
             SetSpeed();
         }
     }
 
     private void SetSpeed()
     {
-        float h = Input.GetAxis("Horizontal"); // Lefty Righty
-        float v = Input.GetAxis("Vertical"); // Uppy Downy
+        float h = Input.GetAxis("Horizontal"); 
+        float v = Input.GetAxis("Vertical"); 
 
+	    // Calculate movement if there is input
         if (h != 0 || v != 0)
         {
             MovementManagement(h, v);
             anim.SetFloat("Speed", speed);
         }
-        else
+        else // Otherwise make sure we reset the animation to idle
         {
             anim.SetFloat("Speed", 0);
         }
 
+	    // Check if we're jumping
         if(Input.GetButton("Jump"))
         {
                 anim.SetBool("Jump", true);
 
                 JumpManagement();
         }
-        else
+        else // Otherwise reset the jump animation
         {
             anim.SetBool("Jump", false);
         }
@@ -133,6 +131,7 @@ public class UnityMove : MonoBehaviour {
 
     private void MovementManagement(float horizontal, float vertical)
     {
+	    // If this is called we simply calculate the new position the player will move to and add to transform
         Rotating(horizontal, vertical);
         Vector3 Movement = new Vector3(horizontal, 0.0f, vertical);
         transform.position += (Movement * speed * Time.deltaTime);
@@ -140,6 +139,8 @@ public class UnityMove : MonoBehaviour {
 
     private void Rotating(float horizontal, float vertical)
     {
+	    // This exact function was taking from Unity's stealth tutorials // 
+	    
         // Create a new vector of the horizontal and vertical inputs.
         Vector3 targetDirection = new Vector3(horizontal, 0f, vertical);
 
@@ -155,11 +156,12 @@ public class UnityMove : MonoBehaviour {
 
     private void JumpManagement()
     {
+	    // If the player is grounded then that's when we want to calculate the jump height
         if (isGrounded == true)
         {
             Jump = new Vector3(0.0f, jumpPower * Time.deltaTime * 2.0f, 0.0f);
         }
-        transform.position += Jump;
+        transform.position += Jump; // Simply add jump to current transform 
     }
     
     // Taken from the standard assets script
@@ -167,15 +169,14 @@ public class UnityMove : MonoBehaviour {
     {
         RaycastHit hitInfo;
 
-        // So we're using this raycast to see if the model has touched the ground
-        // The distance from ground depends on the transform of the model, for unity chan it seems to be the middle of her
+        // See if the Raycast starting from the model has touched with the ground
         if (Physics.Raycast(transform.position + (Vector3.up * 0.1f), Vector3.down, out hitInfo, distanceFromGround))
         {
             GroundNormal = hitInfo.normal;
             isGrounded = true;
             print("Grounded");
         }
-        else
+        else // Otherwise we say we're in the air and add onto the time player has been airborn
         {
             isGrounded = false;
             GroundNormal = Vector3.up;
@@ -186,11 +187,12 @@ public class UnityMove : MonoBehaviour {
 
     private void CheckFallDamage()
     {
-        print(fallDamage); // A test to see if the fall damage is being calculated
-
-        stats.Damage(Mathf.Round(fallDamage * fallDamageRate)); // Throw the fall damage into the stats script
-
-        fallDamage = 0; // Be sure we reset fall damage or else this method will call itself again until we do
+	    // This function is called when the fall damage variable is not 0
+        print(fallDamage);
+	// Calculate the damage the player takes in the player stats script
+        stats.Damage(Mathf.Round(fallDamage * fallDamageRate)); 
+	// Reset fall damage
+        fallDamage = 0; 
         
     }
 }
